@@ -1,3 +1,4 @@
+use clap::Parser;
 use crossterm::{
     cursor,
     event,
@@ -7,18 +8,27 @@ use crossterm::{
     terminal::{ClearType},
     style::{Stylize}
 };
-use std::io::{stdout, Write};
-use std::time::Duration;
+use std::{fs, 
+          io::{stdout, Write}, 
+          path::{PathBuf}, 
+          time::{Duration}
+};
+
+#[derive(Parser, Debug)]
+struct Args {
+    #[arg(short = 'f')]
+    file: Option<String>,
+}
 
 #[derive(Clone)]
 struct Map {
+    name: String,
     width: i32,
     height: i32,
-    par: i32,
     player: Player,
     cubes: Vec<Cube>,
     buttons: Vec<Button>,
-    finish: Finish, // note to self: disable by setting to 0, 0
+    finish: Finish,
     walls: Vec<Wall>,
 }
 
@@ -74,8 +84,8 @@ impl Map {
             cube.backtrack.push((cube.x, cube.y));
         }
 
-        if new_x < 1 || new_x > self.width ||
-            new_y < 1 || new_y > self.height {
+        if new_x < 0 || new_x >= self.width ||
+            new_y < 0 || new_y >= self.height {
             return;
         }
 
@@ -112,8 +122,8 @@ impl Map {
             _ => {}
         }
 
-        if new_x < 1 || new_x > self.width ||
-            new_y < 1 || new_y > self.height {
+        if new_x < 0 || new_x >= self.width ||
+            new_y < 0 || new_y >= self.height {
             return false;
         }
 
@@ -174,11 +184,121 @@ impl Map {
     }
 }
 
+fn load_maps(filepath: &PathBuf) -> Vec<Map> {
+    let contents = fs::read_to_string(filepath)
+        .expect("Failed to read file");
+
+    contents
+        .split(';')
+        .filter_map(|level| {
+            let mut lines = level.lines();
+
+            let header = lines.find(|line| !line.trim().is_empty())?;
+
+            let map_lines: Vec<&str> = lines
+                .filter(|line| !line.trim().is_empty())
+                .collect();
+
+            if map_lines.is_empty() {
+                return None;
+            }
+
+            Some(parse_map(header, &map_lines))
+        })
+        .collect()
+}
+
+fn parse_map(header: &str, lines: &[&str]) -> Map {
+    let name = header.trim().to_string();
+
+    let height = lines.len() as i32;
+    let width = lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0) as i32;
+
+    let mut player = Player {
+        x: 0,
+        y: 0,
+        moves: 0,
+        backtrack: Vec::new(),
+    };
+
+    let mut finish = Finish {
+        x: 0,
+        y: 0,
+    };
+
+    let mut cubes = Vec::new();
+    let mut buttons = Vec::new();
+    let mut walls = Vec::new();
+
+    for (y, line) in lines.iter().enumerate() {
+        for (x, tile) in line.chars().enumerate() {
+            let x = x as i32;
+            let y = y as i32;
+
+            match tile {
+                '#' => {
+                    walls.push(Wall { x, y });
+                }
+                '@' => {
+                    player.x = x;
+                    player.y = y;
+                }
+                '$' => {
+                    cubes.push(Cube {
+                        x,
+                        y,
+                        backtrack: Vec::new(),
+                    });
+                }
+                '.' => {
+                    buttons.push(Button { x, y });
+                }
+                'F' => {
+                    finish.x = x;
+                    finish.y = y;
+                }
+                '*' => {
+                    cubes.push(Cube {
+                        x,
+                        y,
+                        backtrack: Vec::new(),
+                    });
+
+                    buttons.push(Button { x, y });
+                }
+                '+' => {
+                    player.x = x;
+                    player.y = y;
+
+                    buttons.push(Button { x, y });
+                }
+                ' ' => {}
+                _ => {}
+            }
+        }
+    }
+
+    Map {
+        name,
+        width,
+        height,
+        player,
+        cubes,
+        buttons,
+        finish,
+        walls,
+    }
+}
+
 fn render(map: &Map) -> String {
     let mut out = String::new();
 
-    for y in 0..map.height + 2 {
-        for x in 0..map.width + 2 {
+    for y in 0..map.height {
+        for x in 0..map.width {
             let has_player = {
                 x == map.player.x && y == map.player.y
             };
@@ -196,7 +316,7 @@ fn render(map: &Map) -> String {
             };
 
             let has_wall = map.walls.iter().any(|wall| {
-                wall.x == x && wall.y == y || x == 0 || y == 0 || x == map.width + 1 || y == map.height + 1
+                wall.x == x && wall.y == y
             });
 
             let ch = if has_player && has_finish {
@@ -229,181 +349,16 @@ fn render(map: &Map) -> String {
 }
 
 fn main() -> std::io::Result<()> {
+    let args = Args::parse();
+    
+    let filepath = match args.file {
+        Some(file) => PathBuf::from(file),
+        None => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("src/microban.txt"),
+    };
+    let maps = load_maps(&filepath);
+    
     let mut map_index = 0;
-    let maps: Vec<Map> = vec![
-        Map {
-            width: 14,
-            height: 7,
-            par: 84,
-            player: Player { x: 1, y: 2, moves: 0, backtrack: Vec::new() },
-            cubes: vec![
-                Cube { x: 6, y: 3, backtrack: Vec::new() },
-                Cube { x: 13, y: 2, backtrack: Vec::new() },
-            ],
-            buttons: vec![
-                Button { x: 2, y: 7 },
-                Button { x: 5, y: 7 },
-            ],
-            finish: Finish { x: 0, y: 0 },
-            walls: vec![
-                Wall { x: 1, y: 1 },
-                Wall { x: 2, y: 1 },
-                Wall { x: 3, y: 1 },
-                Wall { x: 7, y: 1 },
-                Wall { x: 8, y: 1 },
-                Wall { x: 9, y: 1 },
-                Wall { x: 10, y: 1 },
-                Wall { x: 11, y: 1 },
-                Wall { x: 12, y: 1 },
-                Wall { x: 13, y: 1 },
-                Wall { x: 14, y: 1 },
-                Wall { x: 1, y: 4 },
-                Wall { x: 2, y: 4 },
-                Wall { x: 3, y: 4 },
-                Wall { x: 4, y: 4 },
-                Wall { x: 5, y: 4 },
-                Wall { x: 6, y: 4 },
-                Wall { x: 7, y: 4 },
-                Wall { x: 8, y: 4 },
-                Wall { x: 9, y: 4 },
-                Wall { x: 10, y: 4 },
-                Wall { x: 13, y: 4 },
-                Wall { x: 14, y: 4 },
-                Wall { x: 1, y: 5 },
-                Wall { x: 2, y: 5 },
-                Wall { x: 3, y: 5 },
-                Wall { x: 4, y: 5 },
-                Wall { x: 8, y: 5 },
-                Wall { x: 9, y: 5 },
-                Wall { x: 10, y: 5 },
-                Wall { x: 13, y: 5 },
-                Wall { x: 14, y: 5 },
-                Wall { x: 8, y: 7 },
-                Wall { x: 9, y: 7 },
-                Wall { x: 10, y: 7 },
-                Wall { x: 11, y: 7 },
-                Wall { x: 12, y: 7 },
-                Wall { x: 13, y: 7 },
-                Wall { x: 14, y: 7 },
-            ],
-        },
-        Map {
-            width: 20,
-            height: 11,
-            par: 117,
-            player: Player { x: 1, y: 11, moves: 0, backtrack: Vec::new() },
-            cubes: vec![
-                Cube { x: 7, y: 3, backtrack: Vec::new() },
-                Cube { x: 9, y: 7, backtrack: Vec::new() },
-                Cube { x: 19, y: 11, backtrack: Vec::new() },
-            ],
-            buttons: vec![
-                Button { x: 1, y: 3, },
-                Button { x: 8, y: 7, },
-                Button { x: 18, y: 11, },
-            ],
-            finish: Finish { x: 2, y: 1 },
-            walls: vec![
-                Wall { x: 1, y: 1, },
-                Wall { x: 11, y: 1, },
-                Wall { x: 12, y: 1, },
-                Wall { x: 1, y: 2, },
-                Wall { x: 2, y: 2, },
-                Wall { x: 3, y: 2, },
-                Wall { x: 4, y: 2, },
-                Wall { x: 5, y: 2, },
-                Wall { x: 6, y: 2, },
-                Wall { x: 7, y: 2, },
-                Wall { x: 8, y: 2, },
-                Wall { x: 9, y: 2, },
-                Wall { x: 11, y: 2, },
-                Wall { x: 12, y: 2, },
-                Wall { x: 14, y: 2, },
-                Wall { x: 15, y: 2, },
-                Wall { x: 16, y: 2, },
-                Wall { x: 17, y: 2, },
-                Wall { x: 18, y: 2, },
-                Wall { x: 19, y: 2, },
-                Wall { x: 9, y: 3, },
-                Wall { x: 14, y: 3, },
-                Wall { x: 1, y: 4, },
-                Wall { x: 2, y: 4, },
-                Wall { x: 3, y: 4, },
-                Wall { x: 4, y: 4, },
-                Wall { x: 5, y: 4, },
-                Wall { x: 6, y: 4, },
-                Wall { x: 7, y: 4, },
-                Wall { x: 9, y: 4, },
-                Wall { x: 10, y: 4, },
-                Wall { x: 11, y: 4, },
-                Wall { x: 12, y: 4, },
-                Wall { x: 13, y: 4, },
-                Wall { x: 14, y: 4, },
-                Wall { x: 16, y: 4, },
-                Wall { x: 17, y: 4, },
-                Wall { x: 18, y: 4, },
-                Wall { x: 19, y: 4, },
-                Wall { x: 20, y: 4, },
-                Wall { x: 5, y: 5, },
-                Wall { x: 14, y: 5, },
-                Wall { x: 1, y: 6, },
-                Wall { x: 2, y: 6, },
-                Wall { x: 3, y: 6, },
-                Wall { x: 5, y: 6, },
-                Wall { x: 7, y: 6, },
-                Wall { x: 8, y: 6, },
-                Wall { x: 9, y: 6, },
-                Wall { x: 11, y: 6, },
-                Wall { x: 13, y: 6, },
-                Wall { x: 14, y: 6, },
-                Wall { x: 15, y: 6, },
-                Wall { x: 16, y: 6, },
-                Wall { x: 17, y: 6, },
-                Wall { x: 18, y: 6, },
-                Wall { x: 20, y: 6, },
-                Wall { x: 5, y: 7, },
-                Wall { x: 7, y: 7, },
-                Wall { x: 11, y: 7, },
-                Wall { x: 13, y: 7, },
-                Wall { x: 2, y: 8, },
-                Wall { x: 3, y: 8, },
-                Wall { x: 4, y: 8, },
-                Wall { x: 5, y: 8, },
-                Wall { x: 7, y: 8, },
-                Wall { x: 8, y: 8, },
-                Wall { x: 9, y: 8, },
-                Wall { x: 10, y: 8, },
-                Wall { x: 11, y: 8, },
-                Wall { x: 12, y: 8, },
-                Wall { x: 13, y: 8, },
-                Wall { x: 14, y: 8, },
-                Wall { x: 15, y: 8, },
-                Wall { x: 17, y: 8, },
-                Wall { x: 18, y: 8, },
-                Wall { x: 19, y: 8, },
-                Wall { x: 20, y: 8, },
-                Wall { x: 2, y: 9, },
-                Wall { x: 4, y: 9, },
-                Wall { x: 10, y: 9, },
-                Wall { x: 2, y: 10, },
-                Wall { x: 4, y: 10, },
-                Wall { x: 5, y: 10, },
-                Wall { x: 7, y: 10, },
-                Wall { x: 9, y: 10, },
-                Wall { x: 10, y: 10, },
-                Wall { x: 11, y: 10, },
-                Wall { x: 12, y: 10, },
-                Wall { x: 13, y: 10, },
-                Wall { x: 14, y: 10, },
-                Wall { x: 16, y: 10, },
-                Wall { x: 17, y: 10, },
-                Wall { x: 18, y: 10, },
-                Wall { x: 19, y: 10, },
-                Wall { x: 7, y: 11, },
-                Wall { x: 17, y: 11, },
-            ],
-        },
-    ];
 
     let mut stdout = stdout();
     terminal::enable_raw_mode()?;
@@ -415,13 +370,11 @@ fn main() -> std::io::Result<()> {
         loop {
             if !map.all_objectives_met() {
                 execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
-                print!("Level: {}", map_index + 1);
+                print!("Level: {}", map.name);
                 print!("\r\n{}", render(&map));
                 print!("\r\nArrow keys or WASD to move");
                 print!("\r\nPress b to backtrack, press r to reset and press q to quit");
-                print!("\r\nPar: {}, Moves: {}", map.par, map.player.moves);
-                // string for testing, disabling it but won't delete yet
-                // print!("\r\nPlayer x: {}, Player y: {}", map.player.x, map.player.y);
+                print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
 
                 if event::poll(Duration::from_millis(200))? {
@@ -440,13 +393,6 @@ fn main() -> std::io::Result<()> {
                                     {
                                         return Ok(());
                                     }
-                                KeyCode::Char('n') | KeyCode::Char('N') => {
-                                    map_index += 1;
-                                    if map_index >= maps.len() {
-                                        map_index = 0;
-                                    }
-                                    map = maps[map_index].clone();
-                                },
                                 _ => {}
                             }
                         }
@@ -456,17 +402,13 @@ fn main() -> std::io::Result<()> {
                 execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
                 print!("Level: {}", map_index + 1);
                 print!("\r\n{}", render(&map));
-                print!("\r\nPress n to go to the next level, press r to reset and press q to quit");
-                print!("\r\nPar: {}, Moves: {}", map.par, map.player.moves);
-                let move_delta = map.par - map.player.moves;
-                if move_delta > 0 {
-                    print!("\r\n{} below par", move_delta);
-                } else if move_delta == 0 {
-                    print!("\r\nPar");
+                print!("\r\nYou did it!");
+                if map_index >= maps.len() - 1 {
+                    print!("\r\nPress n to go back to the first level, press r to reset and press q to quit");
                 } else {
-                    print!("\r\n{} above par", move_delta.to_string().trim_matches('-'));
+                    print!("\r\nPress n to go to the next level, press r to reset and press q to quit");
                 }
-                print!("\r\nYou won!");
+                print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
 
                 if event::poll(Duration::from_millis(200))? {
