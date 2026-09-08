@@ -218,7 +218,7 @@ fn render(map: &Map) -> String {
             } else if has_wall {
                 '#'.grey().to_string()
             } else {
-                '.'.dark_grey().to_string()
+                ' '.to_string()
             };
             out.push_str(&ch);
         }
