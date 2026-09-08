@@ -37,7 +37,7 @@ struct Player {
     x: i32,
     y: i32,
     moves: i32,
-    location_history: Vec<(i32, i32)>
+    location_history: Vec<(i32, i32)>,
 }
 
 #[derive(Clone)]
@@ -50,19 +50,19 @@ struct Cube {
 #[derive(Clone)]
 struct Button {
     x: i32,
-    y: i32
+    y: i32,
 }
 
 #[derive(Clone)]
 struct Finish {
     x: i32,
-    y: i32
+    y: i32,
 }
 
 #[derive(Clone)]
 struct Wall {
     x: i32,
-    y: i32
+    y: i32,
 }
 
 impl Map {
@@ -81,12 +81,12 @@ impl Map {
         self.player.location_history.push((self.player.x, self.player.y));
 
         for cube in self.cubes.iter_mut() {
-            cube.location_history.push((cube.x, cube.y));
+            cube.location_history.push((cube.x, cube.y))
         }
 
         if new_x < 0 || new_x >= self.width ||
             new_y < 0 || new_y >= self.height {
-            return;
+            return
         }
 
         if self.walls.iter().any(|wall| wall.x == new_x && wall.y == new_y) {
@@ -105,7 +105,8 @@ impl Map {
 
         self.player.x = new_x;
         self.player.y = new_y;
-        self.player.moves += 1;
+
+        self.player.moves += 1
     }
 
     fn try_move_cube(&mut self, index: usize, direction: char) -> bool {
@@ -124,14 +125,14 @@ impl Map {
 
         if new_x < 0 || new_x >= self.width ||
             new_y < 0 || new_y >= self.height {
-            return false;
+            return false
         }
 
         for (i, other_cube) in self.cubes.iter().enumerate() {
             if i != index &&
                 other_cube.x == new_x &&
                 other_cube.y == new_y {
-                return false;
+                return false
             }
         }
 
@@ -200,7 +201,7 @@ fn load_maps(filepath: &PathBuf) -> Vec<Map> {
                 .collect();
 
             if map_lines.is_empty() {
-                return None;
+                return None
             }
 
             Some(parse_map(header, &map_lines))
@@ -340,7 +341,7 @@ fn render(map: &Map) -> String {
             } else {
                 ' '.to_string()
             };
-            out.push_str(&ch);
+            out.push_str(&ch)
         }
         out.push('\r');
         out.push('\n');
@@ -386,12 +387,12 @@ fn main() -> std::io::Result<()> {
                                 KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('S') => map.try_move_player('d'),
                                 KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') => map.try_move_player('r'),
                                 KeyCode::Char('z') | KeyCode::Char('Z') => map.undo() ,
-                                KeyCode::Char('r') | KeyCode::Char('R') => { map = maps[map_index].clone(); },
+                                KeyCode::Char('r') | KeyCode::Char('R') => map = maps[map_index].clone(),
                                 KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
                                 KeyCode::Char('c')
                                     if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                     {
-                                        return Ok(());
+                                        return Ok(())
                                     }
                                 _ => {}
                             }
@@ -404,9 +405,9 @@ fn main() -> std::io::Result<()> {
                 print!("\r\n{}", render(&map));
                 print!("\r\nYou did it!");
                 if map_index >= maps.len() - 1 {
-                    print!("\r\nPress space to go back to the first level, press r to reset and press q to quit");
+                    print!("\r\nPress space to go back to the first level, press r to reset and press q to quit")
                 } else {
-                    print!("\r\nPress space to go to the next level, press r to reset and press q to quit");
+                    print!("\r\nPress space to go to the next level, press r to reset and press q to quit")
                 }
                 print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
@@ -422,12 +423,12 @@ fn main() -> std::io::Result<()> {
                                     }
                                     map = maps[map_index].clone();
                                 },
-                                KeyCode::Char('r') | KeyCode::Char('R') => { map = maps[map_index].clone(); },
+                                KeyCode::Char('r') | KeyCode::Char('R') => map = maps[map_index].clone(),
                                 KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
                                 KeyCode::Char('c')
                                     if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                     {
-                                        return Ok(());
+                                        return Ok(())
                                     }
                                 _ => {}
                             }
@@ -442,5 +443,4 @@ fn main() -> std::io::Result<()> {
     terminal::disable_raw_mode()?;
 
     result
-
 }
