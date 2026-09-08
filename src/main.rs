@@ -8,15 +8,15 @@ use crossterm::{
     terminal::{ClearType},
     style::{Stylize}
 };
-use std::{fs, 
-          io::{stdout, Write}, 
-          path::{PathBuf}, 
+use std::{fs,
+          io::{stdout, Write},
+          path::{PathBuf},
           time::{Duration}
 };
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(short = 'f')]
+    #[arg(short = 'f', long = "file", help = "Path to a Sokoban puzzle set")]
     file: Option<String>,
 }
 
@@ -37,14 +37,14 @@ struct Player {
     x: i32,
     y: i32,
     moves: i32,
-    backtrack: Vec<(i32, i32)>
+    location_history: Vec<(i32, i32)>
 }
 
 #[derive(Clone)]
 struct Cube {
     x: i32,
     y: i32,
-    backtrack: Vec<(i32, i32)>,
+    location_history: Vec<(i32, i32)>,
 }
 
 #[derive(Clone)]
@@ -78,10 +78,10 @@ impl Map {
             _ => {}
         }
 
-        self.player.backtrack.push((self.player.x, self.player.y));
+        self.player.location_history.push((self.player.x, self.player.y));
 
         for cube in self.cubes.iter_mut() {
-            cube.backtrack.push((cube.x, cube.y));
+            cube.location_history.push((cube.x, cube.y));
         }
 
         if new_x < 0 || new_x >= self.width ||
@@ -145,8 +145,8 @@ impl Map {
         true
     }
 
-    fn backtrack(&mut self) {
-        if let Some((x, y)) = self.player.backtrack.pop() {
+    fn undo(&mut self) {
+        if let Some((x, y)) = self.player.location_history.pop() {
             self.player.x = x;
             self.player.y = y;
 
@@ -156,7 +156,7 @@ impl Map {
         }
 
         for cube in self.cubes.iter_mut() {
-            if let Some((x, y)) = cube.backtrack.pop() {
+            if let Some((x, y)) = cube.location_history.pop() {
                 cube.x = x;
                 cube.y = y;
             }
@@ -222,7 +222,7 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
         x: 0,
         y: 0,
         moves: 0,
-        backtrack: Vec::new(),
+        location_history: Vec::new(),
     };
 
     let mut finish = Finish {
@@ -251,7 +251,7 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
                     cubes.push(Cube {
                         x,
                         y,
-                        backtrack: Vec::new(),
+                        location_history: Vec::new(),
                     });
                 }
                 '.' => {
@@ -265,7 +265,7 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
                     cubes.push(Cube {
                         x,
                         y,
-                        backtrack: Vec::new(),
+                        location_history: Vec::new(),
                     });
 
                     buttons.push(Button { x, y });
@@ -350,14 +350,14 @@ fn render(map: &Map) -> String {
 
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
-    
+
     let filepath = match args.file {
         Some(file) => PathBuf::from(file),
         None => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("src/microban.txt"),
     };
     let maps = load_maps(&filepath);
-    
+
     let mut map_index = 0;
 
     let mut stdout = stdout();
@@ -373,7 +373,7 @@ fn main() -> std::io::Result<()> {
                 print!("Level: {}", map.name);
                 print!("\r\n{}", render(&map));
                 print!("\r\nArrow keys or WASD to move");
-                print!("\r\nPress b to backtrack, press r to reset and press q to quit");
+                print!("\r\nPress z to undo, press r to reset and press q to quit");
                 print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
 
@@ -385,7 +385,7 @@ fn main() -> std::io::Result<()> {
                                 KeyCode::Left | KeyCode::Char('a') | KeyCode::Char('A') => map.try_move_player('l'),
                                 KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('S') => map.try_move_player('d'),
                                 KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') => map.try_move_player('r'),
-                                KeyCode::Char('b') | KeyCode::Char('B') => map.backtrack() ,
+                                KeyCode::Char('z') | KeyCode::Char('Z') => map.undo() ,
                                 KeyCode::Char('r') | KeyCode::Char('R') => { map = maps[map_index].clone(); },
                                 KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
                                 KeyCode::Char('c')
@@ -404,9 +404,9 @@ fn main() -> std::io::Result<()> {
                 print!("\r\n{}", render(&map));
                 print!("\r\nYou did it!");
                 if map_index >= maps.len() - 1 {
-                    print!("\r\nPress n to go back to the first level, press r to reset and press q to quit");
+                    print!("\r\nPress space to go back to the first level, press r to reset and press q to quit");
                 } else {
-                    print!("\r\nPress n to go to the next level, press r to reset and press q to quit");
+                    print!("\r\nPress space to go to the next level, press r to reset and press q to quit");
                 }
                 print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
@@ -415,7 +415,7 @@ fn main() -> std::io::Result<()> {
                     if let Event::Key(key_event) = event::read()? {
                         if key_event.kind == KeyEventKind::Press {
                             match key_event.code {
-                                KeyCode::Char('n') | KeyCode::Char('N') => {
+                                KeyCode::Char(' ') => {
                                     map_index += 1;
                                     if map_index >= maps.len() {
                                         map_index = 0;
