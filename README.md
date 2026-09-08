@@ -7,7 +7,7 @@ Just use cargo to build it and run it. It'll run. Probably.
 Play any sokoban puzzle set by specifying the file path to the .txt file when launching the program.\
 Example:
 ```bash
-./sokoban -f ~/puzzleset.txt
+./sokoban --file ~/puzzleset.txt
 ```
 
 ### Symbols and their meaning:
