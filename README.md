@@ -4,7 +4,7 @@ Idk what you wanna hear from me, this is sokoban but in rust.
 
 Just use cargo to build it and run it. It'll run. Probably.
 
-Play any sokoban puzzle set by specifying the file path to the .txt file when launching the program.\
+Play any of David W. Skinner's sokoban puzzle sets (and others if you format them the same as the included .txt) by specifying the file path to the .txt file when launching the program.\
 Example:
 ```bash
 ./sokoban --file ~/puzzleset.txt
