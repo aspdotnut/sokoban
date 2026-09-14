@@ -385,17 +385,18 @@ fn main() {
             bottom_screen.select();
             if !map.all_objectives_met() {
                 print!(
-                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\n",
+                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}\r\n",
+                    map.player.moves
                 );
             } else {
                 let next_msg = if map_index >= maps.len() - 1 {
-                    "Press a to go back to the first level"
+                    "Press A to go back to the first level"
                 } else {
-                    "Press a to go to the next level"
+                    "Press A to go to the next level"
                 };
                 print!(
-                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\n",
-                    next_msg
+                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}\r\n",
+                    next_msg, map.player.moves
                 );
             }
             stdout().flush().unwrap();
