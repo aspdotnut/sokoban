@@ -12,7 +12,6 @@ use crossterm::{
     terminal,
     terminal::{ClearType}
 };
-#[cfg(not(target_os = "horizon"))]
 use std::{fs,
           io::{stdout, Write},
           path::{PathBuf},
@@ -193,11 +192,13 @@ impl Map {
     }
 }
 
-#[cfg(not(target_os = "horizon"))]
-fn load_maps(filepath: &PathBuf) -> Vec<Map> {
+fn load_maps(_filepath: &PathBuf) -> Vec<Map> {
     #[cfg(not(target_os = "horizon"))]
-    let contents = fs::read_to_string(filepath)
+    let contents = fs::read_to_string(_filepath)
         .expect("Failed to read file");
+
+    #[cfg(target_os = "horizon")]
+    let contents = include_str!("microban.txt");
 
     contents
         .split(';')
@@ -219,7 +220,6 @@ fn load_maps(filepath: &PathBuf) -> Vec<Map> {
         .collect()
 }
 
-#[cfg(not(target_os = "horizon"))]
 fn parse_map(header: &str, lines: &[&str]) -> Map {
     let name = header.trim().to_string();
 
@@ -306,7 +306,6 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
     }
 }
 
-#[cfg(not(target_os = "horizon"))]
 fn render(map: &Map) -> String {
     let mut out = String::new();
 
@@ -368,8 +367,17 @@ fn main() {
     let gfx = Gfx::new().unwrap();
     let _console = Console::new(gfx.top_screen.borrow_mut());
 
-    println!("{} {} {} {} {}", 'K'.yellow(), 'O'.green(), 'o'.blue(), 'x'.red(), '#'.grey());
-    println!("\x1b[29;16HPress Start to exit");
+    let maps = load_maps(&Default::default());
+
+    let mut map_index = 0;
+
+    let mut map = maps[map_index].clone();
+
+    print!("Level: {}", map.name);
+    print!("\r\n{}", render(&map));
+
+    // println!("{} {} {} {} {}", 'K'.yellow(), 'O'.green(), 'o'.blue(), 'x'.red(), '#'.grey());
+    // println!("\x1b[29;16HPress Start to exit");
 
     while apt.main_loop() {
         gfx.wait_for_vblank();
