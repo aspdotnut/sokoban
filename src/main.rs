@@ -1,6 +1,5 @@
 mod colorize;
 use colorize::Stylize;
-
 #[cfg(not(target_os = "horizon"))]
 use clap::Parser;
 #[cfg(not(target_os = "horizon"))]
@@ -12,10 +11,14 @@ use crossterm::{
     terminal,
     terminal::{ClearType}
 };
-use std::{fs,
-          io::{stdout, Write},
-          path::{PathBuf},
-          time::{Duration}
+#[cfg(not(target_os = "horizon"))]
+use std::{
+    fs,
+    time::{Duration}
+};
+use std::{
+    io::{stdout, Write},
+    path::{PathBuf}
 };
 #[cfg(target_os = "horizon")]
 use ctru::prelude::*;
@@ -365,25 +368,75 @@ fn main() {
     let apt = Apt::new().unwrap();
     let mut hid = Hid::new().unwrap();
     let gfx = Gfx::new().unwrap();
-    let _console = Console::new(gfx.top_screen.borrow_mut());
+    let top_screen = Console::new(gfx.top_screen.borrow_mut());
+    let bottom_screen = Console::new(gfx.bottom_screen.borrow_mut());
 
     let maps = load_maps(&Default::default());
-
     let mut map_index = 0;
-
     let mut map = maps[map_index].clone();
-
-    print!("Level: {}", map.name);
-    print!("\r\n{}", render(&map));
-
-    // println!("{} {} {} {} {}", 'K'.yellow(), 'O'.green(), 'o'.blue(), 'x'.red(), '#'.grey());
-    // println!("\x1b[29;16HPress Start to exit");
+    let mut dirty = true;
 
     while apt.main_loop() {
-        gfx.wait_for_vblank();
+        if dirty {
+            top_screen.select();
+            print!("\x1b[0;0HLevel: {}\r\n{}\r\n", map.name, render(&map));
+            stdout().flush().unwrap();
 
+            bottom_screen.select();
+            if !map.all_objectives_met() {
+                print!(
+                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\n",
+                );
+            } else {
+                let next_msg = if map_index >= maps.len() - 1 {
+                    "Press a to go back to the first level"
+                } else {
+                    "Press a to go to the next level"
+                };
+                print!(
+                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\n",
+                    next_msg
+                );
+            }
+            stdout().flush().unwrap();
+            dirty = false;
+        }
+
+        gfx.wait_for_vblank();
         hid.scan_input();
-        if hid.keys_down().contains(KeyPad::START) {
+        let keys = hid.keys_down();
+
+        if (keys.contains(KeyPad::DPAD_UP) || keys.contains(KeyPad::CPAD_UP)) && !map.all_objectives_met() {
+            map.try_move_player('u');
+            dirty = true;
+        } else if (keys.contains(KeyPad::DPAD_DOWN) || keys.contains(KeyPad::CPAD_DOWN)) && !map.all_objectives_met() {
+            map.try_move_player('d');
+            dirty = true;
+        } else if (keys.contains(KeyPad::DPAD_LEFT) || keys.contains(KeyPad::CPAD_LEFT)) && !map.all_objectives_met() {
+            map.try_move_player('l');
+            dirty = true;
+        } else if (keys.contains(KeyPad::DPAD_RIGHT) || keys.contains(KeyPad::CPAD_RIGHT)) && !map.all_objectives_met() {
+            map.try_move_player('r');
+            dirty = true;
+        } else if keys.contains(KeyPad::Y) && !map.all_objectives_met() {
+            map.undo();
+            dirty = true;
+        } else if keys.contains(KeyPad::X) {
+            map = maps[map_index].clone();
+            top_screen.select();
+            print!("\x1b[2J");
+            bottom_screen.select();
+            print!("\x1b[2J");
+            dirty = true;
+        } else if keys.contains(KeyPad::A) && map.all_objectives_met() {
+            map_index = (map_index + 1) % maps.len();
+            map = maps[map_index].clone();
+            top_screen.select();
+            print!("\x1b[2J");
+            bottom_screen.select();
+            print!("\x1b[2J");
+            dirty = true;
+        } else if keys.contains(KeyPad::START) {
             break;
         }
     }
@@ -415,7 +468,7 @@ fn main() -> std::io::Result<()> {
                 print!("Level: {}", map.name);
                 print!("\r\n{}", render(&map));
                 print!("\r\nArrow keys or WASD to move");
-                print!("\r\nPress z to undo, press r to reset and press q to quit");
+                print!("\r\nPress Z to undo, press R to reset and press Q to quit");
                 print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
 
@@ -453,9 +506,9 @@ fn main() -> std::io::Result<()> {
                 print!("\r\n{}", render(&map));
                 print!("\r\nYou did it!");
                 if map_index >= maps.len() - 1 {
-                    print!("\r\nPress space to go back to the first level, press r to reset and press q to quit")
+                    print!("\r\nPress Space to go back to the first level, press R to reset and press Q to quit")
                 } else {
-                    print!("\r\nPress space to go to the next level, press r to reset and press q to quit")
+                    print!("\r\nPress Space to go to the next level, press R to reset and press Q to quit")
                 }
                 print!("\r\nMoves: {}", map.player.moves);
                 stdout.flush()?;
