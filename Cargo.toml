@@ -3,6 +3,12 @@ name = "sokoban"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[target.'cfg(not(target_os = "horizon"))'.dependencies]
 clap = { version = "4.6.6", features = ["derive"] }
 crossterm = "0.29.0"
+
+[target.'cfg(target_os = "horizon")'.dependencies]
+ctru-rs = { git = "https://github.com/rust3ds/ctru-rs" }
+
+[target.'cfg(target_os = "horizon")'.package.metadata.cargo-3ds]
+romfs_dir = "romfs"

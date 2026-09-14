@@ -1,19 +1,27 @@
+mod colorize;
+use colorize::Stylize;
+
+#[cfg(not(target_os = "horizon"))]
 use clap::Parser;
+#[cfg(not(target_os = "horizon"))]
 use crossterm::{
     cursor,
     event,
     event::{Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal,
-    terminal::{ClearType},
-    style::{Stylize}
+    terminal::{ClearType}
 };
+#[cfg(not(target_os = "horizon"))]
 use std::{fs,
           io::{stdout, Write},
           path::{PathBuf},
           time::{Duration}
 };
+#[cfg(target_os = "horizon")]
+use ctru::prelude::*;
 
+#[cfg(not(target_os = "horizon"))]
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(short = 'f', long = "file", help = "Path to a Sokoban puzzle set")]
@@ -185,7 +193,9 @@ impl Map {
     }
 }
 
+#[cfg(not(target_os = "horizon"))]
 fn load_maps(filepath: &PathBuf) -> Vec<Map> {
+    #[cfg(not(target_os = "horizon"))]
     let contents = fs::read_to_string(filepath)
         .expect("Failed to read file");
 
@@ -209,6 +219,7 @@ fn load_maps(filepath: &PathBuf) -> Vec<Map> {
         .collect()
 }
 
+#[cfg(not(target_os = "horizon"))]
 fn parse_map(header: &str, lines: &[&str]) -> Map {
     let name = header.trim().to_string();
 
@@ -295,6 +306,7 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
     }
 }
 
+#[cfg(not(target_os = "horizon"))]
 fn render(map: &Map) -> String {
     let mut out = String::new();
 
@@ -349,6 +361,27 @@ fn render(map: &Map) -> String {
     out
 }
 
+#[cfg(target_os = "horizon")]
+fn main() {
+    let apt = Apt::new().unwrap();
+    let mut hid = Hid::new().unwrap();
+    let gfx = Gfx::new().unwrap();
+    let _console = Console::new(gfx.top_screen.borrow_mut());
+
+    println!("{} {} {} {} {}", 'K'.yellow(), 'O'.green(), 'o'.blue(), 'x'.red(), '#'.grey());
+    println!("\x1b[29;16HPress Start to exit");
+
+    while apt.main_loop() {
+        gfx.wait_for_vblank();
+
+        hid.scan_input();
+        if hid.keys_down().contains(KeyPad::START) {
+            break;
+        }
+    }
+}
+
+#[cfg(not(target_os = "horizon"))]
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
@@ -382,15 +415,22 @@ fn main() -> std::io::Result<()> {
                     if let Event::Key(key_event) = event::read()? {
                         if key_event.kind == KeyEventKind::Press {
                             match key_event.code {
-                                KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W')  => map.try_move_player('u'),
+                                KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W') => map.try_move_player('u'),
                                 KeyCode::Left | KeyCode::Char('a') | KeyCode::Char('A') => map.try_move_player('l'),
                                 KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('S') => map.try_move_player('d'),
                                 KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') => map.try_move_player('r'),
-                                KeyCode::Char('z') | KeyCode::Char('Z') => map.undo() ,
+                                KeyCode::Char('z') | KeyCode::Char('Z') => map.undo(),
                                 KeyCode::Char('r') | KeyCode::Char('R') => map = maps[map_index].clone(),
                                 KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
+                                KeyCode::Char(' ') => {
+                                    map_index += 1;
+                                    if map_index >= maps.len() {
+                                        map_index = 0;
+                                    }
+                                    map = maps[map_index].clone();
+                                },
                                 KeyCode::Char('c')
-                                    if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
+                                if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                     {
                                         return Ok(())
                                     }
@@ -426,7 +466,7 @@ fn main() -> std::io::Result<()> {
                                 KeyCode::Char('r') | KeyCode::Char('R') => map = maps[map_index].clone(),
                                 KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
                                 KeyCode::Char('c')
-                                    if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
+                                if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                     {
                                         return Ok(())
                                     }
