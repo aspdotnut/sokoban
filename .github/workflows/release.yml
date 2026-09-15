@@ -54,6 +54,7 @@ jobs:
           echo "$CARGO_HOME/bin" >> $GITHUB_PATH
           . "$CARGO_HOME/env"
           rustup default nightly
+          rustup component add rust-src
           cargo install cargo-3ds cargo-get
 
       - name: Build ELF
