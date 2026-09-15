@@ -68,6 +68,8 @@ jobs:
         run: |
           apt-get update && apt-get install -y git build-essential libmbedtls-dev libyaml-dev
           git clone --recursive https://github.com/3DSGuy/Project_CTR.git
+          find Project_CTR -iname "*blz*"
+          cat Project_CTR/makerom/makefile | grep -i blz
           cd Project_CTR/makerom
           make
           cp bin/makerom /usr/local/bin/
