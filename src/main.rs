@@ -46,7 +46,6 @@ struct Map {
 struct Player {
     x: i32,
     y: i32,
-    moves: i32,
     location_history: Vec<(i32, i32)>,
 }
 
@@ -115,8 +114,6 @@ impl Map {
 
         self.player.x = new_x;
         self.player.y = new_y;
-
-        self.player.moves += 1
     }
 
     fn try_move_cube(&mut self, index: usize, direction: char) -> bool {
@@ -160,10 +157,6 @@ impl Map {
         if let Some((x, y)) = self.player.location_history.pop() {
             self.player.x = x;
             self.player.y = y;
-
-            if self.player.moves > 0 {
-                self.player.moves -= 1
-            }
         }
 
         for cube in self.cubes.iter_mut() {
@@ -236,7 +229,6 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
     let mut player = Player {
         x: 0,
         y: 0,
-        moves: 0,
         location_history: Vec::new(),
     };
 
@@ -385,8 +377,8 @@ fn main() {
             bottom_screen.select();
             if !map.all_objectives_met() {
                 print!(
-                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}\r\n",
-                    map.player.moves
+                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n",
+                    map.player.location_history.len()
                 );
             } else {
                 let next_msg = if map_index >= maps.len() - 1 {
@@ -395,8 +387,8 @@ fn main() {
                     "Press A to go to the next level"
                 };
                 print!(
-                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}\r\n",
-                    next_msg, map.player.moves
+                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n",
+                    next_msg, map.player.location_history.len()
                 );
             }
             stdout().flush().unwrap();
@@ -470,7 +462,7 @@ fn main() -> std::io::Result<()> {
                 print!("\r\n{}", render(&map));
                 print!("\r\nArrow keys or WASD to move");
                 print!("\r\nPress Z to undo, press R to reset and press Q to quit");
-                print!("\r\nMoves: {}", map.player.moves);
+                print!("\r\nMoves: {}", map.player.location_history.len());
                 stdout.flush()?;
 
                 if event::poll(Duration::from_millis(200))? {
@@ -511,7 +503,7 @@ fn main() -> std::io::Result<()> {
                 } else {
                     print!("\r\nPress Space to go to the next level, press R to reset and press Q to quit")
                 }
-                print!("\r\nMoves: {}", map.player.moves);
+                print!("\r\nMoves: {}", map.player.location_history.len());
                 stdout.flush()?;
 
                 if event::poll(Duration::from_millis(200))? {
