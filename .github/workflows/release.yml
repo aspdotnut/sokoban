@@ -66,8 +66,8 @@ jobs:
 
       - name: Build makerom from source
         run: |
-          apt-get update && apt-get install -y git build-essential
-          git clone https://github.com/3DSGuy/Project_CTR.git
+          apt-get update && apt-get install -y git build-essential libmbedtls-dev libyaml-dev
+          git clone --recursive https://github.com/3DSGuy/Project_CTR.git
           cd Project_CTR/makerom
           make
           cp bin/makerom /usr/local/bin/
