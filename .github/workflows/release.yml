@@ -46,6 +46,7 @@ jobs:
 
       - name: Install Rust + cargo-3ds + cargo-get
         run: |
+          apt-get update && apt-get install -y clang libclang-dev
           export CARGO_HOME=/root/.cargo
           export RUSTUP_HOME=/root/.rustup
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
@@ -62,7 +63,7 @@ jobs:
 
       - name: Download prebuilt makerom
         run: |
-          curl -L -o makerom.zip https://github.com/3DSGuy/Project_CTR/releases/latest/download/makerom-v0.18.4-ubuntu_x86_64.zip
+          curl -L -o makerom.zip https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.19.0/makerom-v0.19.0-ubuntu_x86_64.zip
           unzip makerom.zip -d /usr/local/bin
           chmod +x /usr/local/bin/makerom
 
