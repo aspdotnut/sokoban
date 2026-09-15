@@ -13,10 +13,10 @@ use crossterm::{
 };
 #[cfg(not(target_os = "horizon"))]
 use std::{
-    fs,
     time::{Duration}
 };
 use std::{
+    fs,
     io::{stdout, Write},
     path::{PathBuf}
 };
@@ -189,12 +189,11 @@ impl Map {
 }
 
 fn load_maps(_filepath: &PathBuf) -> Vec<Map> {
-    #[cfg(not(target_os = "horizon"))]
-    let contents = fs::read_to_string(_filepath)
-        .expect("Failed to read file");
-
-    #[cfg(target_os = "horizon")]
-    let contents = include_str!("microban.txt");
+    let contents = if *_filepath == PathBuf::default() {
+        include_str!("microban.txt").to_string()
+    } else {
+        fs::read_to_string(_filepath).expect("Failed to read file")
+    };
 
     contents
         .split(';')
@@ -439,12 +438,10 @@ fn main() {
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    let filepath = match args.file {
-        Some(file) => PathBuf::from(file),
-        None => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src/microban.txt"),
+    let maps = match args.file {
+        Some(file) => load_maps(&PathBuf::from(file)),
+        None => load_maps(&Default::default())
     };
-    let maps = load_maps(&filepath);
 
     let mut map_index = 0;
 
