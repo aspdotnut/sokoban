@@ -377,8 +377,8 @@ fn main() {
             bottom_screen.select();
             if !map.all_objectives_met() {
                 print!(
-                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n",
-                    map.player.location_history.len()
+                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall\r\n",
+                    map.player.location_history.len(), 'K'.yellow(), 'o'.blue(), 'x'.red(), 'O'.green(), '#'.grey()
                 );
             } else {
                 let next_msg = if map_index >= maps.len() - 1 {
@@ -387,8 +387,8 @@ fn main() {
                     "Press A to go to the next level"
                 };
                 print!(
-                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n",
-                    next_msg, map.player.location_history.len()
+                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall\r\n",
+                    next_msg, map.player.location_history.len(), 'K'.yellow(), 'o'.blue(), 'x'.red(), 'O'.green(), '#'.grey()
                 );
             }
             stdout().flush().unwrap();
