@@ -64,11 +64,13 @@ jobs:
       - name: Build ELF
         run: cargo 3ds build --release
 
-      - name: Download prebuilt makerom
+      - name: Build makerom from source
         run: |
-          curl -L -o makerom.zip https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.19.0/makerom-v0.19.0-ubuntu_x86_64.zip
-          unzip makerom.zip -d /usr/local/bin
-          chmod +x /usr/local/bin/makerom
+          apt-get update && apt-get install -y git build-essential
+          git clone https://github.com/3DSGuy/Project_CTR.git
+          cd Project_CTR/makerom
+          make
+          cp bin/makerom /usr/local/bin/
 
       - name: Build CIA
         run: |
