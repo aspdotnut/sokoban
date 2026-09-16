@@ -427,7 +427,7 @@ fn main() {
             stdout().flush().unwrap();
 
             bottom_screen.select();
-            let help_text = format_help_text(map);
+            let help_text = format_help_text(&map);
 
             if !map.all_objectives_met() {
                 print!(
