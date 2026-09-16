@@ -2,7 +2,13 @@
 
 Idk what you wanna hear from me, this is sokoban but in rust.
 
-Just use cargo to build it and run it. It'll run. Probably.
+You can either download a build from the releases tab or build it yourself. It'll run. Probably.\
+On Linux you'll want to use chmod to turn it into an executable before running it:
+```bash
+chmod +x ./sokoban-linux
+./sokoban-linux
+```
+The builds are unsigned so you'll have to work around that on Windows and macOS.
 
 Play any of David W. Skinner's sokoban puzzle sets (and others if you format them the same as the included .txt) by specifying the file path to the .txt file when launching the program.\
 Example:
