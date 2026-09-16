@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp target/release/${{ matrix.bin }} dist/sokoban-${{ matrix.name }}${{ matrix.name == 'windows' && '.exe' || '' }}
+          cp target/release/${{ matrix.bin }} dist/${{ matrix.bin }}
       - uses: actions/upload-artifact@v4
         with:
           name: sokoban-${{ matrix.name }}
@@ -104,7 +104,11 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release
-          find artifacts -type f -exec cp {} release/ \;
+          chmod +x artifacts/sokoban-linux/sokoban artifacts/sokoban-macos/sokoban
+          tar -czf release/sokoban-linux.tar.gz -C artifacts/sokoban-linux sokoban
+          tar -czf release/sokoban-macos.tar.gz -C artifacts/sokoban-macos sokoban
+          zip -j release/sokoban-windows.zip artifacts/sokoban-windows/sokoban.exe
+          cp artifacts/sokoban-3ds/sokoban-3ds.cia release/
           ls -la release/
 
       - name: Create GitHub Release
