@@ -11,10 +11,6 @@ use crossterm::{
     terminal,
     terminal::{ClearType}
 };
-#[cfg(not(target_os = "horizon"))]
-use std::{
-    time::{Duration}
-};
 use std::{
     fs,
     io::{stdout, Write},
@@ -354,6 +350,63 @@ fn render(map: &Map) -> String {
     out
 }
 
+fn format_help_text(map: &Map) -> String {
+    let has_finish = map.finish.x != 0 && map.finish.y != 0;
+    let has_cubes = map.cubes.len() > 0;
+    let has_buttons = map.buttons.len() > 0;
+
+    match (has_finish, has_cubes, has_buttons) {
+        (true, true, true) => {
+            format!(
+                "{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall      {}: Finish",
+                'K'.yellow(), 'o'.blue(), 'x'.red(), 'O'.green(), '#'.grey(), 'F'.blue()
+            )
+        }
+        (false, true, true) => {
+            format!(
+                "{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall\r",
+                'K'.yellow(), 'o'.blue(), 'x'.red(), 'O'.green(), '#'.grey()
+            )
+        }
+        (true, false, true) => {
+            format!(
+                "{}: Player    {}: Button\r\n{}: Wall      {}: Finish",
+                'K'.yellow(), 'x'.red(), '#'.grey(), 'F'.blue()
+            )
+        }
+        (true, true, false) => {
+            format!(
+                "{}: Player    {}: Cube\r\n{}: Wall      {}: Finish",
+                'K'.yellow(), 'o'.blue(), '#'.grey(), 'F'.blue()
+            )
+        }
+        (false, false, true) => {
+            format!(
+                "{}: Player    {}: Button\r\n{}: Wall",
+                'K'.yellow(), 'x'.red(), '#'.grey()
+            )
+        }
+        (false, true, false) => {
+            format!(
+                "{}: Player    {}: Cube\r\n{}: Wall",
+                'K'.yellow(), 'o'.blue(), '#'.grey()
+            )
+        }
+        (true, false, false) => {
+            format!(
+                "{}: Player    {}: Wall\r\n{}: Finish",
+                'K'.yellow(), '#'.grey(), 'F'.blue()
+            )
+        }
+        (false, false, false) => {
+            format!(
+                "{}: Player    {}: Wall\r",
+                'K'.yellow(), '#'.grey()
+            )
+        }
+    }
+}
+
 #[cfg(target_os = "horizon")]
 fn main() {
     let apt = Apt::new().unwrap();
@@ -374,10 +427,12 @@ fn main() {
             stdout().flush().unwrap();
 
             bottom_screen.select();
+            let help_text = format_help_text(map);
+
             if !map.all_objectives_met() {
                 print!(
-                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall\r\n",
-                    map.player.location_history.len(), 'K'.yellow(), 'o'.blue(), 'x'.red(), 'O'.green(), '#'.grey()
+                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}\r\n",
+                    map.player.location_history.len(), help_text
                 );
             } else {
                 let next_msg = if map_index >= maps.len() - 1 {
@@ -386,8 +441,8 @@ fn main() {
                     "Press A to go to the next level"
                 };
                 print!(
-                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall\r\n",
-                    next_msg, map.player.location_history.len(), 'K'.yellow(), 'o'.blue(), 'x'.red(), 'O'.green(), '#'.grey()
+                    "\x1b[2J\x1b[0;0H\r\nYou did it!\r\n{}\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}\r\n",
+                    next_msg, map.player.location_history.len(), help_text
                 );
             }
             stdout().flush().unwrap();
@@ -451,79 +506,73 @@ fn main() -> std::io::Result<()> {
 
     let mut map = maps[map_index].clone();
 
+    let mut dirty = true;
+
     let result = (|| -> std::io::Result<()> {
         loop {
-            if !map.all_objectives_met() {
+            if dirty {
                 execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
-                print!("Level: {}", map.name);
-                print!("\r\n{}", render(&map));
-                print!("\r\nArrow keys or WASD to move");
-                print!("\r\nPress Z to undo, press R to reset and press Q to quit");
-                print!("\r\nMoves: {}", map.player.location_history.len());
-                stdout.flush()?;
-
-                if event::poll(Duration::from_millis(200))? {
-                    if let Event::Key(key_event) = event::read()? {
-                        if key_event.kind == KeyEventKind::Press {
-                            match key_event.code {
-                                KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W') => map.try_move_player('u'),
-                                KeyCode::Left | KeyCode::Char('a') | KeyCode::Char('A') => map.try_move_player('l'),
-                                KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('S') => map.try_move_player('d'),
-                                KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') => map.try_move_player('r'),
-                                KeyCode::Char('z') | KeyCode::Char('Z') => map.undo(),
-                                KeyCode::Char('r') | KeyCode::Char('R') => map = maps[map_index].clone(),
-                                KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
-                                KeyCode::Char(' ') => {
-                                    map_index += 1;
-                                    if map_index >= maps.len() {
-                                        map_index = 0;
-                                    }
-                                    map = maps[map_index].clone();
-                                },
-                                KeyCode::Char('c')
-                                if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
-                                    {
-                                        return Ok(())
-                                    }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            } else {
-                execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
-                print!("Level: {}", map_index + 1);
-                print!("\r\n{}", render(&map));
-                print!("\r\nYou did it!");
-                if map_index >= maps.len() - 1 {
-                    print!("\r\nPress Space to go back to the first level, press R to reset and press Q to quit")
+                let help_text = format_help_text(&map);
+                if !map.all_objectives_met() {
+                    print!("Level: {}\r\n{}\r\nArrow keys or WASD to move\r\nPress Z to undo, press R to reset and press Q to quit\r\nMoves: {}\r\n\n{}",
+                           map.name, render(&map), map.player.location_history.len(), help_text);
                 } else {
-                    print!("\r\nPress Space to go to the next level, press R to reset and press Q to quit")
+                    let next_msg = if map_index >= maps.len() - 1 {
+                        "Press Space to go back to the first level"
+                    } else {
+                        "Press Space to go to the next level"
+                    };
+                    print!("Level: {}\r\n{}\r\nYou did it!\r\n{}, press R to reset and press Q to quit\r\nMoves: {}\r\n\n{}",
+                           map.name, render(&map), next_msg, map.player.location_history.len(), help_text);
                 }
-                print!("\r\nMoves: {}", map.player.location_history.len());
                 stdout.flush()?;
 
-                if event::poll(Duration::from_millis(200))? {
-                    if let Event::Key(key_event) = event::read()? {
-                        if key_event.kind == KeyEventKind::Press {
-                            match key_event.code {
-                                KeyCode::Char(' ') => {
-                                    map_index += 1;
-                                    if map_index >= maps.len() {
-                                        map_index = 0;
-                                    }
-                                    map = maps[map_index].clone();
-                                },
-                                KeyCode::Char('r') | KeyCode::Char('R') => map = maps[map_index].clone(),
-                                KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
-                                KeyCode::Char('c')
-                                if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
-                                    {
-                                        return Ok(())
-                                    }
-                                _ => {}
+                dirty = false
+            }
+            if let Event::Key(key_event) = event::read()? {
+                if key_event.kind == KeyEventKind::Press {
+                    match key_event.code {
+                        KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('W') if !map.all_objectives_met() => {
+                            map.try_move_player('u');
+                            dirty = true;
+                        },
+                        KeyCode::Left | KeyCode::Char('a') | KeyCode::Char('A') if !map.all_objectives_met() => {
+                            map.try_move_player('l');
+                            dirty = true;
+                        },
+                        KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('S') if !map.all_objectives_met() => {
+                            map.try_move_player('d');
+                            dirty = true;
+                        },
+                        KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('D') if !map.all_objectives_met() => {
+                            map.try_move_player('r');
+                            dirty = true;
+                        },
+                        KeyCode::Char('z') | KeyCode::Char('Z') if !map.all_objectives_met() => {
+                            map.undo();
+                            dirty = true;
+                        },
+                        KeyCode::Char('r') | KeyCode::Char('R') => {
+                            map = maps[map_index].clone();
+                            dirty = true;
+                        },
+                        KeyCode::Char('q') | KeyCode::Char('Q') => {
+                            return Ok(())
+                        },
+                        KeyCode::Char(' ') if map.all_objectives_met() => {
+                            map_index += 1;
+                            if map_index >= maps.len() {
+                                map_index = 0;
                             }
-                        }
+                            map = maps[map_index].clone();
+                            dirty = true;
+                        },
+                        KeyCode::Char('c')
+                        if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
+                            {
+                                return Ok(())
+                            }
+                        _ => {}
                     }
                 }
             }
