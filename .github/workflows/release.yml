@@ -52,6 +52,10 @@ jobs:
       - name: Install cargo-3ds + cargo-get
         run: cargo install cargo-3ds cargo-get
 
+      - name: Install Clang
+        run: |
+          apt-get update && apt-get install -y clang libclang-dev
+
       - name: Build ELF
         run: cargo 3ds build --release
 
