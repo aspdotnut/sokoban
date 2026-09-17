@@ -1,5 +1,10 @@
 mod colorize;
+#[cfg(target_os = "horizon")]
+mod touch_input;
+
 use colorize::Stylize;
+#[cfg(target_os = "horizon")]
+use touch_input::TouchInputHandler;
 #[cfg(not(target_os = "horizon"))]
 use clap::Parser;
 #[cfg(not(target_os = "horizon"))]
@@ -422,6 +427,7 @@ fn main() {
     let mut map_index = 0;
     let mut map = maps[map_index].clone();
     let mut dirty = true;
+    let mut touch_handler = TouchInputHandler::new();
 
     while apt.main_loop() {
         if dirty {
@@ -454,6 +460,14 @@ fn main() {
 
         gfx.wait_for_vblank();
         hid.scan_input();
+
+        if let Some(direction) = touch_handler.update(&hid) {
+            if !map.all_objectives_met() {
+                map.try_move_player(direction.as_char());
+                dirty = true;
+            }
+        }
+
         let keys = hid.keys_down();
 
         if (keys.contains(KeyPad::DPAD_UP) || keys.contains(KeyPad::CPAD_UP)) && !map.all_objectives_met() {
