@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build --release
-      - name: Rename binary
+      - name: Prepare binary
         shell: bash
         run: |
           mkdir -p dist
@@ -44,22 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install Rust + cargo-3ds + cargo-get
-        run: |
-          apt-get update && apt-get install -y clang libclang-dev
-          export CARGO_HOME=/root/.cargo
-          export RUSTUP_HOME=/root/.rustup
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
-          echo "CARGO_HOME=/root/.cargo" >> $GITHUB_ENV
-          echo "RUSTUP_HOME=/root/.rustup" >> $GITHUB_ENV
-          echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-          echo "/root/.cargo/bin" >> $GITHUB_PATH
-          echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
-          . "$CARGO_HOME/env"
-          rustup default nightly
-          rustup component add rust-src
-          cargo install cargo-3ds cargo-get
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+
+      - name: Install cargo-3ds + cargo-get
+        run: cargo install cargo-3ds cargo-get
 
       - name: Build ELF
         run: cargo 3ds build --release
