@@ -75,18 +75,15 @@ impl Map {
         let mut new_x = self.player.x;
         let mut new_y = self.player.y;
 
+        let player_old = (self.player.x, self.player.y);
+        let cubes_old: Vec<(i32, i32)> = self.cubes.iter().map(|c| (c.x, c.y)).collect();
+
         match direction {
             'u' => new_y = self.player.y - 1,
             'd' => new_y = self.player.y + 1,
             'l' => new_x = self.player.x - 1,
             'r' => new_x = self.player.x + 1,
             _ => {}
-        }
-
-        self.player.location_history.push((self.player.x, self.player.y));
-
-        for cube in self.cubes.iter_mut() {
-            cube.location_history.push((cube.x, cube.y))
         }
 
         if new_x < 0 || new_x >= self.width ||
@@ -106,6 +103,12 @@ impl Map {
             if !self.try_move_cube(index, direction) {
                 return
             }
+        }
+
+        self.player.location_history.push(player_old);
+
+        for (cube, old) in self.cubes.iter_mut().zip(cubes_old) {
+            cube.location_history.push(old);
         }
 
         self.player.x = new_x;
