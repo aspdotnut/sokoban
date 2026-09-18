@@ -5,7 +5,7 @@ Idk what you wanna hear from me, this is sokoban but in rust.
 You can either download a build from the releases tab or build it yourself. It'll run. Probably.\
 The builds are unsigned so you'll have to work around that on Windows and macOS.
 
-Play any of David W. Skinner's sokoban puzzle sets (and others if you format them the same as the included .txt) by specifying the file path to the .txt file when launching the program.\
+Play any sokoban puzzle set (as long as the levels are split by a `;`) by specifying the file path to the .txt file when launching the program.\
 Example:
 ```bash
 ./sokoban --file ~/puzzleset.txt
@@ -17,7 +17,7 @@ Example:
  - O: cube on button
  - x: button
  - K: player
- - F: finish (optionally implementable into levels, only active when all buttons are pressed)
+ - F: finish (optionally implementable into levels as `€`, only active when all buttons are pressed)
 
 ### Credits
 microban.txt created by David W. Skinner\

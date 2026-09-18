@@ -176,7 +176,7 @@ impl Map {
     }
 
     fn finish_reached(&self) -> bool {
-        if (self.player.x != self.finish.x || self.player.y != self.finish.y) && self.finish.x != 0 && self.finish.y != 0 {
+        if (self.player.x != self.finish.x || self.player.y != self.finish.y) && self.has_finish() {
             false
         } else {
             true
@@ -189,6 +189,30 @@ impl Map {
                 cube.x == button.x && cube.y == button.y
             })
         })
+    }
+
+    fn has_buttons(&self) -> bool {
+        if self.buttons.len() > 0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn has_cubes(&self) -> bool {
+        if self.cubes.len() > 0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn has_finish(&self) -> bool {
+        if self.finish.x != 0 && self.finish.y != 0 {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -267,7 +291,7 @@ fn parse_map(header: &str, lines: &[&str]) -> Map {
                 '.' => {
                     buttons.push(Button { x, y });
                 }
-                'F' => {
+                '€' => {
                     finish.x = x;
                     finish.y = y;
                 }
@@ -359,11 +383,7 @@ fn render(map: &Map) -> String {
 }
 
 fn format_help_text(map: &Map) -> String {
-    let has_finish = map.finish.x != 0 && map.finish.y != 0;
-    let has_cubes = map.cubes.len() > 0;
-    let has_buttons = map.buttons.len() > 0;
-
-    match (has_finish, has_cubes, has_buttons) {
+    match (map.has_finish(), map.has_cubes(), map.has_buttons()) {
         (true, true, true) => {
             format!(
                 "{}: Player    {}: Cube\r\n{}: Button    {}: Cube on Button\r\n{}: Wall      {}: Finish",
@@ -530,6 +550,14 @@ fn main() -> std::io::Result<()> {
             if dirty {
                 execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
                 let help_text = format_help_text(&map);
+                if !(map.has_cubes() || map.has_finish()){
+                    map_index += 1;
+                    if map_index >= maps.len() {
+                        map_index = 0;
+                    }
+                    map = maps[map_index].clone();
+                    dirty = true;
+                }
                 if !map.all_objectives_met() {
                     print!("Level: {}\r\n{}\r\nArrow keys or WASD to move\r\nPress Z to undo, press R to reset and press Q to quit\r\nMoves: {}\r\n\n{}",
                            map.name, render(&map), map.player.location_history.len(), help_text);
