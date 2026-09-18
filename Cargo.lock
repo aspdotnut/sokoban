@@ -750,6 +750,7 @@ dependencies = [
  "clap",
  "crossterm",
  "ctru-rs",
+ "regex",
 ]
 
 [[package]]

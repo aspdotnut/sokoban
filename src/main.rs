@@ -16,6 +16,7 @@ use crossterm::{
     terminal,
     terminal::{ClearType}
 };
+use regex::regex;
 use std::{
     fs,
     io::{stdout, Write},
@@ -243,8 +244,18 @@ fn load_maps(_filepath: &PathBuf) -> Vec<Map> {
         .collect()
 }
 
-fn parse_map(header: &str, lines: &[&str]) -> Map {
-    let name = header.trim().to_string();
+fn parse_map(header: &str, unparsed_lines: &[&str]) -> Map {
+    let name;
+    let mut lines: Vec<&str> = unparsed_lines.to_vec(); // default: just lines
+
+    if regex!(r"[^#\s]+").is_match(header) {
+        name = header.trim().to_string();
+    } else {
+        name = "".to_string();
+        lines = std::iter::once(header)
+            .chain(lines.iter().copied())
+            .collect();
+    }
 
     let height = lines.len() as i32;
     let width = lines
