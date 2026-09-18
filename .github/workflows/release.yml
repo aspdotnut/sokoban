@@ -78,6 +78,7 @@ jobs:
           cp bin/makerom /usr/local/bin/
 
       - name: Build CIA
+        shell: bash
         run: |
           mkdir -p out
           VERSION=$(cargo get package.version)
