@@ -80,12 +80,16 @@ jobs:
       - name: Build CIA
         run: |
           mkdir -p out
+          VERSION=$(cargo get package.version)
+          IFS='.' read -r VER_MAJOR VER_MINOR VER_MICRO <<< "$VERSION"
           makerom \
             -elf ./target/armv6k-nintendo-3ds/release/sokoban.elf \
             -banner ./banner/banner.bnr \
             -icon ./banner/icon.icn \
             -rsf ./app.rsf \
-            -ver $(cargo get package.version) \
+            -major "$VER_MAJOR" \
+            -minor "$VER_MINOR" \
+            -micro "$VER_MICRO" \
             -f cia \
             -o ./out/sokoban-3ds.cia
 
