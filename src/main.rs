@@ -440,7 +440,7 @@ fn main() {
 
             if !map.all_objectives_met() {
                 print!(
-                    "\x1b[0;0H\r\nD-pad or Circle Pad to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}\r\n",
+                    "\x1b[0;0H\r\nD-pad, Circle Pad or Swipe to move\r\nPress Y to undo\r\nPress X to reset\r\nPress Start to quit\r\nMoves: {}      \r\n\x1b[27;0H{}\r\n",
                     map.player.location_history.len(), help_text
                 );
             } else {
